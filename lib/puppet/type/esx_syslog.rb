@@ -49,7 +49,9 @@ Puppet::Type.newtype(:esx_syslog) do
   autorequire(:esx_datastore) do
     # autorequire datastore from log_dir
     if self[:log_dir]
-      ds = self[:log_dir].match(/\[([^\]]+)\](.*)/)[1]
+      #ds = self[:log_dir].match(/\[([^\]]+)\](.*)/)[1]
+      # [XXX] Would prefer to use Pathname() for this
+      ds = self[:log_dir].split(File::SEPARATOR)[3]
       "#{self[:name]}:#{ds}"
     end
   end
