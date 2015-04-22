@@ -33,11 +33,19 @@ Puppet::Type.type(:esx_maintmode).provide(:esx_maintmode, :parent => Puppet::Pro
   end
 
   def exists?
+    tries = 0
     begin
       host.runtime.inMaintenanceMode
     rescue Exception => e
-      fail "Host is not available: -\n #{e.message}"
+      if tries < 12
+        tries += 1
+        sleep 30
+        retry
+      else
+        fail "Host is not available: -\n #{e.message}"
+      end
     end
   end
+
 
 end
