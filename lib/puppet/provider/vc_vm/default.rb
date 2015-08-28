@@ -406,15 +406,22 @@ Puppet::Type.type(:vc_vm).provide(:vc_vm, :parent => Puppet::Provider::Vcenter) 
     filterSpec = { :objectSet => cluster.datastore.map { |ds| { :obj => ds } }, :propSet => propSet }
     data = vim.propertyCollector.RetrieveProperties(:specSet => [filterSpec])
     datastore_info = {}
+    local_datastore_info = {}
     data.select { |d| d['summary.accessible'] }.sort_by { |d| d['info.url'] }.each do |d|
-      next if resource[:skip_local_datastore] == :true and d['name'].match(/local-storage-\d+/)
+      #next if resource[:skip_local_datastore] == :true and d['name'].match(/local-storage-\d+/)
       size = d['summary.capacity']
       free = d['summary.freeSpace']
       used = size - free
       pct_used = used*100.0/size
-      datastore_info[d['name']] = { 'size' => size, 'free' => free, 'used' => used, 'info' => d['info'], 'summary' => d['summary'] }
+      if d['name'].match(/local-storage-\d+/)
+        local_datastore_info[d['name']] = { 'size' => size, 'free' => free, 'used' => used, 'info' => d['info'], 'summary' => d['summary'] }
+      else
+        datastore_info[d['name']] = { 'size' => size, 'free' => free, 'used' => used, 'info' => d['info'], 'summary' => d['summary'] }
+      end
+
     end
     Puppet.debug("Datastore info: #{datastore_info}")
+    Puppet.debug("Local Datastore info: #{local_datastore_info}")
     Puppet.debug("Requested size: #{requested_size}")
     if !requested_datastore.empty?
       raise("Datastore #{requested_datastore} not found") if
@@ -431,6 +438,15 @@ Puppet::Type.type(:vc_vm).provide(:vc_vm, :parent => Puppet::Provider::Vcenter) 
           datastore_selected = datastore
           Puppet.debug("Selected datastore: #{datastore_selected}")
           break
+        end
+      end
+      if datastore_selected.nil?
+        local_datastore_info.keys.each do |datastore|
+          if local_datastore_info[datastore]['free'].to_i > requested_size.to_i
+            datastore_selected = datastore
+            Puppet.debug("Selected datastore: #{datastore_selected}")
+            break
+          end
         end
       end
       raise("No datastore found with sufficient free space") if datastore_selected.nil?
