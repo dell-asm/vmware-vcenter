@@ -6,6 +6,25 @@ module PuppetX::Puppetlabs::Transport
     attr_accessor :vim
     attr_reader :name
 
+    def self.connect(options)
+      @vims ||= {}
+      @vims[options[:host]] ||= begin
+        Puppet.debug("#{self} opening connection to #{options[:host]}")
+        RbVmomi::VIM.connect(options)
+      rescue Exception => e
+        Puppet.warning("#{self} connection to #{options[:host]} failed; retrying once...")
+        RbVmomi::VIM.connect(options)
+      end
+    end
+
+    def self.close(options)
+      if @vims[options[:host]]
+        Puppet.debug("#{self} closing connection to: #{options[:host]}")
+        @vims[options[:host]].close
+        @vims[options[:host]] = nil
+      end
+    end
+
     def initialize(opts)
       @name    = opts[:name]
       options  = opts[:options] || {}
@@ -17,18 +36,11 @@ module PuppetX::Puppetlabs::Transport
     end
 
     def connect
-      @vim ||= begin
-        Puppet.debug("#{self.class} opening connection to #{@options[:host]}")
-        RbVmomi::VIM.connect(@options)
-      rescue Exception => e
-        Puppet.warning("#{self.class} connection to #{@options[:host]} failed; retrying once...")
-        RbVmomi::VIM.connect(@options)
-      end
+      @vim = Vsphere.connect(@options)
     end
 
     def close
-      Puppet.debug("#{self.class} closing connection to: #{@options[:host]}")
-      @vim.close if @vim
+      Vsphere.close(@options)
     end
   end
 end
