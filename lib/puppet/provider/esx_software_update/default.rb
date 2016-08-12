@@ -15,7 +15,7 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
         installed_vibs = []
         skipped_vibs = []
         @actionable_vibs.each do |vib_url|
-          Puppet.debug("Attempting to install the VIB: #{vib_url}")
+          Puppet.debug("Attempting to install VIB: %s" % vib_url)
           install_results = install_vib vib_url
           installed_vibs += install_results[:VIBsInstalled]
           skipped_vibs += install_results[:VIBsSkipped] if install_results[:VIBsSkipped]
@@ -24,8 +24,8 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
         if installed_vibs.length == @actionable_vibs.length
           Puppet.info("Successfully installed the VIBs")
         elsif installed_vibs.length > 0
-          Puppet.info("Successfully installed following VIBs : #{installed_vibs}")
-          Puppet.info("Skipped installing following VIBs : #{skipped_vibs}")
+          Puppet.info("Successfully installed following VIBs : %s" % installed_vibs)
+          Puppet.info("Skipped installing following VIBs :%s" % skipped_vibs)
           if installed_vibs.length + skipped_vibs.length < @actionable_vibs.length
             raise "Some VIBs failed to install"
           end
@@ -40,7 +40,7 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
       end
     rescue Exception => e
       unmount_mounted_nfs_shares
-      fail "esx_software_update installation failed due to following exception: \n #{e.message}"
+      fail "esx_software_update installation failed due to exception: %s" % e.message
     end
   end
 
@@ -61,7 +61,7 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
         if removed_vibs.length == @actionable_vibs.length
           Puppet.info("Successfully removed the VIBs")
         elsif removed_vibs.length > 0
-          Puppet.info("Successfully removed following VIBs : #{removed_vibs}")
+          Puppet.info("Successfully removed following VIBs : %s" % removed_vibs)
         else
           raise "no VIBs removed"
         end
@@ -69,9 +69,9 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
       end
     rescue Exception => e
       if e.is_a?(Rbvmomi::Fault)
-        fail "esx_software_update removal failed due to following exception: \n #{e.message} #{e.fault.errMsg}"
+        fail "esx_software_update removal failed due to exception: %s, Fault Message: %s" % [e.message, e.fault.errMsg]
       else
-        fail "esx_software_update removal failed due to following exception: \n #{e.message}"
+        fail "esx_software_update removal failed due to exception: %s" % e.message
       end
     end
   end
@@ -85,6 +85,11 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
                               # value: {volume_name i.e. corresponding volume name, new_mount i.e. boolean indicating if it was mounted by us}
     is_install = nil          # Flag to determine if we are in install mode (create) or uninstall mode (destroy)
     existing_vibs = {}        # List of all existing VIBs on the ESX host
+
+    vibs = resource[:vibs].is_a?(Array) ? resource[:vibs] : [resource[:vibs]]
+    Puppet.debug("VIBs to query : %s" % vibs.join(","))
+    return false if vibs.all? {|v| v.nil?} # If no vibs passed, or array of nil vibs passed, we don't need to query. Simply return false
+
     begin
       if resource[:nfs_hostname]
         # Get list of all mounted NFS datastores, and add it to mounted NFS shares
@@ -93,20 +98,21 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
           if nfs_store[:Host] && nfs_store[:Share] && nfs_store[:Mounted]
             key = nfs_store[:Host] + ":" + nfs_store[:Share]
             @mounted_nfs_shares[key] = { :volume_name => nfs_store[:VolumeName], :new_mount => false }
-            Puppet.debug("Added existing NFS mount #{key} on the ESX host")
+            Puppet.debug("Added existing NFS mount %s on the ESX host" % key)
           end
         end
       end
       # Get all pre-installed VIBs and save it to our map
       Puppet.debug("Getting list of pre-installed VIBs...")
+      pre_installed_vibs = 0
       host.esxcli.software.vib.get.each do |installed_vib_data|
         if installed_vib_data[:ID]
           existing_vibs[installed_vib_data[:ID]] = true
-          Puppet.debug("Found pre-installed VIB #{installed_vib_data[:ID]}")
+          pre_installed_vibs += 1
         end
       end
-      vibs = resource[:vibs].is_a?(Array) ? resource[:vibs] : [resource[:vibs]]
-      Puppet.debug("VIBs to query : #{vibs}...")
+      Puppet.debug("Found %d pre-installed VIBs" % pre_installed_vibs)
+
       # The type validation already validates proper format of fields for either install or uninstall
       # To determine the install mode, we simply need to do check if first element hash or not
       is_install = vibs.first.is_a?(Hash)
@@ -119,29 +125,30 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
           # on the ESX host. If not installed, add qualified path to the VIB to actionable_vibs list
           # Fetch VIB info from the source
           qualified_vib_path = setup_fully_qualified_vib_path(vib_data)
-          Puppet.debug("Fetching VIB info for #{qualified_vib_path}")
+          Puppet.debug("Fetching VIB info for %s" % qualified_vib_path)
           begin
             vib_source_data = get_source_vib_info(qualified_vib_path)
             # Check if the VIB is already pre-installed. If not, we can add to actionable_vibs list
             if vib_source_data.is_a?(Array)
               if existing_vibs[vib_source_data[0][:ID]]
-                Puppet.debug("#{vib_source_data[0][:ID]} is already installed.")
+                Puppet.debug("%s is already installed" % vib_source_data[0][:ID])
               else
-                Puppet.debug("#{vib_source_data[0][:ID]} is not installed")
+                Puppet.debug("%s is not installed" % vib_source_data[0][:ID])
                 add_actionable_vib(qualified_vib_path)
               end
             else
-              Puppet.warning("Unexpected VIB source information: #{vib_source_data} is not an Array.")
+              Puppet.warning("Unexpected VIB source information: %s is not an Array" % vib_source_data)
             end
           rescue Exception => e
-            Puppet.error("Failed to get VIB info for #{qualified_vib_path} due to error: #{e.message}")
-            Puppet.error("Fault error message: #{e.fault.errMsg}") if e.is_a?(RbVmomi::Fault)
+            Puppet.error("Failed to get VIB info for %s due to error: %s %s" % [qualified_vib_path, e.class, e.message])
+            Puppet.error("Fault message: %s" % e.fault.errMsg) if e.is_a?(RbVmomi::Fault)
             raise e
           end
         end
       end
     rescue Exception => e
-      Puppet.error("Cannot determine if specified VIBs exists due to exception #{e.class}:#{e.message} Backtrace: #{e.backtrace.join("\n")}")
+      Puppet.error("Failed to determine if specified VIBs exists: %s %s" % [e.class, e.message])
+      Puppet.debug("Backtrace: %s" % e.backtrace.join("\n"))
       raise e
     end
     # For install mode: if there are any actionable VIBs, we need to return false (i.e. resource does not exist) so that "create" is invoked by puppet
@@ -151,26 +158,28 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
 
   # Helper method to add to list to actionable VIBs
   def add_actionable_vib(path_to_vib)
-    Puppet.debug("Adding #{path_to_vib} to list of VIBs for install or uninstall")
+    Puppet.debug("Adding %s to list of VIBs for processing" % path_to_vib)
     @actionable_vibs.push(path_to_vib)
   end
 
   # Helper method to reboot a ESX host and wait for it to come back upto desired timeout
   def reboot_and_wait_for_host
     host.RebootHost_Task({:force => false}).wait_for_completion
-    Puppet.debug("Waiting upto #{resource[:reboot_timeout]} seconds for host to connect")
+    Puppet.debug("%s Waiting upto %s seconds for host to connect" % [Time.now, resource[:reboot_timeout]])
     rounds = ((1.0 * (resource[:reboot_timeout] - 180)) / 30).ceil
     sleep 180  # Sleep for 3 minutes to allow reboot initiation request to reflect
     for i in 1..rounds
       begin
         if host.runtime.connectionState == "connected"
-          Puppet.debug("Host has rebooted and is connected")
+          Puppet.info("Host has rebooted and is connected")
           break
+        else
+          Puppet.debug("%s Host connection state: %s " % [Time.now, host.runtime.connectionState] )
         end
       rescue Exception => ex
-        Puppet.debug("Ignoring #{ex} since host is in process of rebooting")
+        Puppet.debug("Host is in process of rebooting, ignoring error: %s %s" % [ex.class, ex.message])
         if ex.is_a?(RbVmomi::Fault) && ex.fault.class.to_s == "NotAuthenticated"
-          Puppet.debug("Resetting host connection")
+          Puppet.info("Reset host connection")
           reset_connection
         end
       end
@@ -252,14 +261,14 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
   # Helper method to mount a given NFS share on ESX as a specified volume_name
   def mount_nfs_share share, volume_name
     begin
-      Puppet.debug("Mounting #{share} with volume name #{volume_name}")
+      Puppet.debug("Mounting %s with volume name %s" %[share, volume_name])
       host.esxcli.storage.nfs.add({:host => resource[:nfs_hostname],
                                    :share => share,
                                    :volumename => volume_name})
-      Puppet.info("Mounted #{share} with volume name #{volume_name}")
+      Puppet.info("Successfully mounted %s" % share)
       return true
     rescue RbVmomi::Fault => e
-      Puppet.error("Failed to mount #{share} due to error: #{e.message} #{e.fault.errMsg}")
+      Puppet.error("Cannot mount %s due to error: %s Fault Message: %s" %[share, e.message, e.fault.errMsg])
     end
     false
   end
@@ -278,12 +287,12 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
   # Helper method to unmount a given NFS volume on ESX
   def unmount_nfs_share volume_name
     begin
-      Puppet.debug("Unmounting volume name #{volume_name}")
+      Puppet.debug("Unmounting volume %s" % volume_name)
       host.esxcli.storage.nfs.remove({:volumename => volume_name})
-      Puppet.info("Unmounted volume name #{volume_name}")
+      Puppet.info("Successfully unmounted volume: %s" % volume_name)
       return true
     rescue RbVmomi::Fault => e
-      Puppet.error("Failed to unmount #{volume_name} due to error: #{e.message} #{e.fault.errMsg}")
+      Puppet.error("Cannot unmount %s due to error: %s Fault Message: %s" %[volume_name, e.message, e.fault.errMsg])
     end
     false
   end
