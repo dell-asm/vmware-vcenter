@@ -12,7 +12,7 @@ describe Puppet::Type.type(:vc_migratevm) do
         :migratevm_host           => '172.16.100.56',
         :migratevm_host_datastore => '172.16.100.56, datastore3',
 
-      }}
+    }}
     it do
       expect {
         should compile

@@ -1,43 +1,23 @@
-# Copyright (C) 2013 VMware, Inc.
-if Puppet.features.vsphere? and ! Puppet.run_mode.master?
-  require 'rbvmomi'
-  require_relative 'rbvmomi_patch' # Use patched library to workaround rbvmomi issues
-end
+require 'spec_helper'
+require 'yaml'
+require 'puppet/provider/vcenter'
+require 'rspec/mocks'
+require 'fixtures/unit/puppet/provider/vm_snapshot/vm_snapshot_fixture'
 
-module PuppetX::Puppetlabs::Transport
-  class Vsphere
-    attr_accessor :vim
-    attr_reader :name
+describe "Create vm_snapshot behavior testing" do
+  before(:each) do
+    @fixture = Vm_snapshot_fixture.new
 
-    def initialize(opts)
-      @name    = opts[:name]
-      options  = opts[:options] || {}
-      @options = options.inject({}){|h, (k, v)| h[k.to_sym] = v; h}
-      @options[:host]     = opts[:server]
-      @options[:user]     = opts[:username]
-      @options[:password] = opts[:password]
-      Puppet.debug("#{self.class} initializing connection to: #{@options[:host]}")
+  end
+
+  context "when vm_snapshot provider is created " do
+    it "should have a exists? method defined for vm_snapshot" do
+      @fixture.provider.class.instance_method(:exists?).should_not == nil
     end
 
-    def connect
-      @vim ||= begin
-        Puppet.debug("#{self.class} opening connection to #{@options[:host]}")
-        RbVmomi::VIM.connect(@options)
-      rescue Exception => e
-        Puppet.warning("#{self.class} connection to #{@options[:host]} failed; retrying once...")
-        RbVmomi::VIM.connect(@options)
-      end
-    end
-
-    def close
-      Puppet.debug("#{self.class} closing connection to: #{@options[:host]}")
-      @vim.close if @vim
-    end
-
-    def reconnect
-      close
-      @vim = nil
-      connect
+    it "should have a parent 'Puppet::Provider::Vcenter'" do
+      @fixture.provider.should be_kind_of(Puppet::Provider::Vcenter)
     end
   end
+
 end

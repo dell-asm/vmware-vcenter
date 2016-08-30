@@ -5,11 +5,11 @@ describe Puppet::Type.type(:esx_get_iqns) do
 
   context 'should compile with given test params' do
     let(:params) { {
-       :host         => '172.16.100.56',
-       :hostusername => 'root',
-       :hostpassword => 'iforgot@123',
-       
-      }}
+        :host         => '172.16.100.56',
+        :hostusername => 'root',
+        :hostpassword => 'iforgot@123',
+
+    }}
     it do
       expect {
         should compile
@@ -21,6 +21,6 @@ describe Puppet::Type.type(:esx_get_iqns) do
   it "should have host as one of its parameters for host name" do
     described_class.key_attributes.should == [:host]
   end
- 
 
-  end
+
+end

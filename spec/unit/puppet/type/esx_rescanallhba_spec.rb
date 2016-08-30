@@ -9,7 +9,7 @@ describe Puppet::Type.type(:esx_rescanallhba) do
         :ensure   => present,
         :host   => 'esx1',
         :path   => '/datacenter1',
-      }}
+    }}
     it do
       expect {
         should compile

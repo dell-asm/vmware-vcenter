@@ -11,7 +11,7 @@ describe Puppet::Type.type(:esx_fcoe) do
         :host           => 'esx1',
         :physical_nic   => 'vmnic1',
         :path           => '/datacenter1',
-      }}
+    }}
     it do
       expect {
         should compile

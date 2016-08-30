@@ -13,7 +13,7 @@ describe Puppet::Type.type(:vc_host) do
         :password  => 'password',
         :sslthumbprint => 'foobar',
         :secure => 'false'
-      }}
+    }}
     it do
       expect {
         should compile
@@ -47,24 +47,24 @@ describe Puppet::Type.type(:vc_host) do
       describe "validating name param" do
         it "should allow a valid name" do
           described_class.new(:name => 'esx1', :ensure => 'present', :path => '/datacenter1', :username => 'foo', :password => 'password',
-          :sslthumbprint => 'foobar', :secure => 'false')[:name].should == 'esx1'
+                              :sslthumbprint => 'foobar', :secure => 'false')[:name].should == 'esx1'
         end
 
         it "should not allow blank value in the name" do
           expect { described_class.new(:name => '', :ensure => 'present', :path => '/datacenter1', :username => 'foo', :password => 'password',
-            :sslthumbprint => 'foobar', :secure => 'false') }.to raise_error Puppet::Error
+                                       :sslthumbprint => 'foobar', :secure => 'false') }.to raise_error Puppet::Error
         end
       end
 
       describe "validating username param" do
         it "should allow a valid username" do
           described_class.new(:name => 'esx1', :ensure => 'present', :path => '/datacenter1', :username => 'foo', :password => 'password',
-          :sslthumbprint => 'foobar', :secure => 'false')[:username].should == 'foo'
+                              :sslthumbprint => 'foobar', :secure => 'false')[:username].should == 'foo'
         end
 
         it "should not allow blank value in the username" do
           expect { described_class.new(:name => 'esx1', :ensure => 'present', :path => '/datacenter1', :username => '', :password => 'password',
-            :sslthumbprint => 'foobar', :secure => 'false') }.to raise_error Puppet::Error
+                                       :sslthumbprint => 'foobar', :secure => 'false') }.to raise_error Puppet::Error
         end
       end
 
@@ -72,12 +72,12 @@ describe Puppet::Type.type(:vc_host) do
 
         it "should allow a valid password" do
           described_class.new(:name => 'esx1', :ensure => 'present', :path => '/datacenter1', :username => 'foo', :password => 'password',
-          :sslthumbprint => 'foobar', :secure => 'false')[:password].should == 'password'
+                              :sslthumbprint => 'foobar', :secure => 'false')[:password].should == 'password'
         end
 
         it "should not allow blank value in the password" do
           expect { described_class.new(:name => 'esx1', :ensure => 'present', :path => '/datacenter1', :username => 'foo', :password => '',
-            :sslthumbprint => 'foobar', :secure => 'false') }.to raise_error Puppet::Error
+                                       :sslthumbprint => 'foobar', :secure => 'false') }.to raise_error Puppet::Error
         end
       end
 
@@ -85,7 +85,7 @@ describe Puppet::Type.type(:vc_host) do
 
         it "should allow a valid sslthumbprint" do
           described_class.new(:name => 'esx1', :ensure => 'present', :path => '/datacenter1', :username => 'foo', :password => 'password',
-          :sslthumbprint => 'foobar', :secure => 'false')[:sslthumbprint].should == 'foobar'
+                              :sslthumbprint => 'foobar', :secure => 'false')[:sslthumbprint].should == 'foobar'
         end
       end
 
@@ -93,12 +93,12 @@ describe Puppet::Type.type(:vc_host) do
 
         it "should allow a valid path" do
           described_class.new(:name => 'esx1', :ensure => 'present', :path => '/datacenter1', :username => 'foo', :password => 'password',
-          :sslthumbprint => 'foobar', :secure => 'false')[:path].should == '/datacenter1'
+                              :sslthumbprint => 'foobar', :secure => 'false')[:path].should == '/datacenter1'
         end
 
         it "should not invalid path values" do
           expect { described_class.new(:name => 'esx1', :ensure => 'present', :path => '####datacenter1', :username => 'foo', :password => 'password',
-            :sslthumbprint => 'foobar', :secure => 'false') }.to raise_error Puppet::Error
+                                       :sslthumbprint => 'foobar', :secure => 'false') }.to raise_error Puppet::Error
         end
       end
 
@@ -106,17 +106,17 @@ describe Puppet::Type.type(:vc_host) do
 
         it "should support present value" do
           described_class.new(:name => 'esx1', :ensure => 'present', :path => '/datacenter1', :username => 'foo', :password => 'password',
-          :sslthumbprint => 'foobar', :secure => 'false')[:ensure].should == :present
+                              :sslthumbprint => 'foobar', :secure => 'false')[:ensure].should == :present
         end
 
         it "should support absent value" do
           described_class.new(:name => 'esx1', :ensure => 'absent', :path => '/datacenter1', :username => 'foo', :password => 'password',
-          :sslthumbprint => 'foobar', :secure => 'false')[:ensure].should == :absent
+                              :sslthumbprint => 'foobar', :secure => 'false')[:ensure].should == :absent
         end
 
         it "should not allow values other than present or absent" do
           expect { described_class.new(:name => 'esx1', :ensure => 'foo', :path => '/datacenter1', :username => 'foo', :password => 'password',
-            :sslthumbprint => 'foobar', :secure => 'false') }.to raise_error Puppet::Error
+                                       :sslthumbprint => 'foobar', :secure => 'false') }.to raise_error Puppet::Error
         end
 
       end
@@ -125,17 +125,17 @@ describe Puppet::Type.type(:vc_host) do
 
         it "should support true value" do
           described_class.new(:name => 'esx1', :ensure => 'present', :path => '/datacenter1', :username => 'foo', :password => 'password',
-          :sslthumbprint => 'foobar', :secure => 'true')[:secure].should.to_s == 'true'
+                              :sslthumbprint => 'foobar', :secure => 'true')[:secure].should.to_s == 'true'
         end
 
         it "should support false value" do
           described_class.new(:name => 'esx1', :ensure => 'absent', :path => '/datacenter1', :username => 'foo', :password => 'password',
-          :sslthumbprint => 'foobar', :secure => 'false')[:secure].should.to_s == 'false'
+                              :sslthumbprint => 'foobar', :secure => 'false')[:secure].should.to_s == 'false'
         end
 
         it "should not allow values other than true or false" do
           expect { described_class.new(:name => 'esx1', :ensure => 'foo', :path => '/datacenter1', :username => 'foo', :password => 'password',
-            :sslthumbprint => 'foobar', :secure => 'foo') }.to raise_error Puppet::Error
+                                       :sslthumbprint => 'foobar', :secure => 'foo') }.to raise_error Puppet::Error
         end
 
       end
