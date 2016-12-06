@@ -75,9 +75,12 @@ def collect_inventory(obj, parent=nil)
       #If ComputeResource but not ClusterComputeResource, it is a standalone host
       hash = collect_inventory(obj.host.first)
     when RbVmomi::VIM::HostSystem
-      @host_count += 1
-      hash[:attributes] = collect_host_attributes(obj)
-      (obj.vm + obj.datastore).each{ |vm| hash[:children] << collect_inventory(vm, obj)}
+      # Skip the servers which are not in connected state.
+      if obj.runtime.connectionState == "connected"
+        @host_count += 1
+        hash[:attributes] = collect_host_attributes(obj)
+        (obj.vm + obj.datastore).each{ |vm| hash[:children] << collect_inventory(vm, obj)}
+      end
     when RbVmomi::VIM::VirtualMachine
       @vm_count += 1
       hash[:attributes] = collect_vm_attributes(obj)
