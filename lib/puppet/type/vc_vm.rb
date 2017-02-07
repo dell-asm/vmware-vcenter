@@ -132,6 +132,10 @@ Puppet::Type.newtype(:vc_vm) do
     end
   end
 
+  newparam(:nfs) do
+    desc "nfs datastore for mounting iso "
+  end
+
   newparam(:template_datacenter) do
     desc "Template datacenter."
   end
