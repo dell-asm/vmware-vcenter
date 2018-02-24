@@ -980,24 +980,28 @@ Puppet::Type.type(:vc_vm).provide(:vc_vm, :parent => Puppet::Provider::Vcenter) 
 
   private
 
-  def findvm(folder, vm_name)
-    folder.children.each do |f|
-      case f
-      when RbVmomi::VIM::Folder
-        findvm(f, vm_name)
-      when RbVmomi::VIM::VirtualMachine
-        return f if f.name == vm_name
-      when RbVmomi::VIM::VirtualApp
-        f.vm.each do |v|
-        return f if v.name == vm_name
-        end
-      else
-        raise(Puppet::Error, "unknown child type found: #{f.class}")
-      end
-    end
-
-    nil
-  end
+  def findvm(folder,vm_name)
+     folder.children.each do |f|
+       break if @vm_obj
+       case f
+       when RbVmomi::VIM::Folder
+         findvm(f,vm_name)
+       when RbVmomi::VIM::VirtualMachine
+         @vm_obj = f if f.name == vm_name
+       when RbVmomi::VIM::VirtualApp
+         f.vm.each do |v|
+           if v.name == vm_name
+             @vm_obj = f
+             break
+           end
+         end
+       else
+         puts "unknown child type found: #{f.class}"
+         exit
+       end
+     end
+     @vm_obj
+   end
 
   def datacenter(name=resource[:datacenter])
     @datacenter ||= vim.serviceInstance.find_datacenter(name) or raise(Puppet::Error, "datacenter '#{name}' not found.")
