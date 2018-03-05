@@ -579,12 +579,11 @@ Puppet::Type.type(:vc_vm).provide(:vc_vm, :parent => Puppet::Provider::Vcenter) 
     #Sort order: Pod -> Remote Datastore -> Local Datastore (each sorted by free size)
     datastore_info.sort_by! {|h| [h["pod"] ? 0 : 1, h["is_local"] ? 1 : 0, -h["free"]]}
 
-    Puppet.debug("Datastore info: #{datastore_info}")
     Puppet.debug("Requested size: #{requested_size}")
     if !requested_datastore.empty?
       info = datastore_info.find { |d| d['name'] == requested_datastore }
       raise("Datastore #{requested_datastore} not found") unless info
-      raise("In-sufficient space in datastore #{requested_datastore}") unless info['free'] < requested_size
+      raise("In-sufficient space in datastore #{requested_datastore}") if info['free'] < requested_size
       info
     else
       datastore_selected = datastore_info.find { |d| d['free'] >= requested_size }
