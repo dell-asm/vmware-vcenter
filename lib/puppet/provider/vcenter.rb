@@ -101,6 +101,7 @@ class Puppet::Provider::Vcenter <  Puppet::Provider
         dc = walk(path, RbVmomi::VIM::Datacenter) or fail("No datacenter in path: #{path}")
         vim.searchIndex.FindByDnsName(:datacenter => dc, :dnsName => host, :vmSearch => false)
       elsif host =~ Resolv::IPv4::Regex
+        Puppet.debug("Looking for host, %s, by searching index." % host)
         vim.searchIndex.FindByIp(:ip => host, :vmSearch => false)
       else
         vim.searchIndex.FindByDnsName(:dnsName => host, :vmSearch => false)

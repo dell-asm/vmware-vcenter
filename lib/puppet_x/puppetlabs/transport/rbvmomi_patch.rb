@@ -55,7 +55,7 @@ end
 # patch will overide execute method and supports esxi versions 6 and above
 RbVmomi::VIM::ReflectManagedMethodExecuter.send(:define_method, :execute) do |moid, method, args|
   soap_args = args.map do |k, v|
-    VIM::ReflectManagedMethodExecuterSoapArgument.new.tap do |soap_arg|
+    RbVmomi::VIM::ReflectManagedMethodExecuterSoapArgument.new.tap do |soap_arg|
       soap_arg.name = k
       xml = Builder::XmlMarkup.new :indent => 0
       _connection.obj2xml xml, k, :anyType, false, v
