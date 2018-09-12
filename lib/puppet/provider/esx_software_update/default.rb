@@ -33,6 +33,10 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
 
   # Method called by puppet to create a resource i.e. when exists returns false
   def create
+    Puppet.debug("vim.serviceInstance.content.about.apiType = %s" % vim.serviceInstance.content.about.apiType)
+    Puppet.debug("@actionable_vibs = %s" % @actionable_vibs)
+    Puppet.debug("host - %s (%s)" % [host.to_s, host.name])
+
     ensure_maintenance_mode
 
     reboot_required = false
@@ -77,6 +81,7 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
     unmount_mounted_nfs_shares
     # Reboot if needed
     reboot_and_wait_for_host if reboot_required
+
     fail "Failed to install VIBs" if failures > 0
   end
 
@@ -241,6 +246,7 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
     if resource[:nfs_hostname]
       # Get list of all mounted NFS datastores, and add it to mounted NFS shares
       Puppet.debug("Getting list of mounted NFS datastores...")
+      Puppet.debug("There is/are %s NFS storages mounted on the target host." % host.esxcli.storage.nfs.list.count)
       host.esxcli.storage.nfs.list.each do |nfs_store|
         if nfs_store[:Host] && nfs_store[:Share] && nfs_store[:Mounted]
           key = nfs_store[:Host] + ":" + nfs_store[:Share]
@@ -254,13 +260,14 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
   # Helper method to mount a given NFS share on ESX as a specified volume_name
   def mount_nfs_share(share, volume_name)
     begin
-      Puppet.debug("%s: Mounting %s with volume name %s" % [Time.now, share, volume_name])
+      Puppet.debug("%s: Mounting %s from %s with volume name %s" % [Time.now, share, resource[:nfs_hostname], volume_name])
       host.esxcli.storage.nfs.add({:host => resource[:nfs_hostname],
                                    :share => share,
                                    :volumename => volume_name})
       Puppet.debug("%s: Mounted %s with volume name %s" % [Time.now, share, volume_name])
       return true
     rescue => e
+      Puppet.debug("!!!!!!!!!!!!!!!!! Inspect Error: %s" % e.backtrace)
       log_error("Failed to mount", share, e)
     end
     false
