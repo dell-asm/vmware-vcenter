@@ -53,6 +53,18 @@ Puppet::Type.newtype(:esx_software_update) do
     defaultto(false)
   end
 
+  newparam(:reboot) do
+    desc "Parameter indicating if reboot should be performed or not."
+    newvalues(true, false)
+    defaultto(true)
+  end
+
+  newparam(:disable_maintmode) do
+    desc "Parameter indicating if maintmode should be disabled or not."
+    newvalues(true, false)
+    defaultto(true)
+  end
+
   newparam(:host, :namevar => true) do
     desc "The ESX host"
     validate do |value|

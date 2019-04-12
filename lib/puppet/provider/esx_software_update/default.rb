@@ -89,8 +89,8 @@ Puppet::Type.type(:esx_software_update).provide(:esx_software_update, :parent =>
     # Unmount all NFS stores we mounted
     unmount_mounted_nfs_shares
     # Reboot if needed
-    reboot_and_wait_for_host if reboot_required
-    disable_maintenance_mode
+    reboot_and_wait_for_host if reboot_required && resource[:reboot]
+    disable_maintenance_mode if resource[:disable_maintmode]
     fail "Failed to install VIBs" if failures > 0
   end
 
