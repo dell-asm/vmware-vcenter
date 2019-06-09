@@ -162,6 +162,7 @@ def collect_host_attributes(host)
   attributes[:os_ip_address] = host.config.network.vnic[0].spec.ip.ipAddress
   attributes[:host_ip_addresses] = host.config.network.vnic.map { |vnic| vnic.spec.ip.ipAddress }
   attributes[:host_virtual_nics] = collect_host_vmk_ips(host)
+  attributes[:host_vmknic_info] = collect_host_vmks(host)
   attributes[:host_physical_nic] = collect_host_pnic_mac(host)
   attributes[:ntp_servers] = host.config.dateTimeInfo.ntpConfig.server
   host_config = get_host_config(host)
@@ -198,6 +199,11 @@ end
 def collect_host_vmk_ips(host)
   host_virtual_nic_array = host.config.network.vnic
   virtual_nic_ip_array = host_virtual_nic_array.map { |hv_nic| hv_nic[:spec][:ip][:ipAddress] }
+end
+
+def collect_host_vmks(host)
+  host_virtual_nic_array = host.config.network.vnic
+  host_virtual_nic_array.map { |hv_nic| hv_nic[:device] }
 end
 
 def collect_host_pnic_mac(host)
