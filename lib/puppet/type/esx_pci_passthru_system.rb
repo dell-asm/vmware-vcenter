@@ -24,8 +24,10 @@ Puppet::Type.newtype(:esx_pci_passthru_system) do
   newparam(:pci_device_id) do
     desc "The id of target PCI device."
     validate do |value|
-      if value.strip.length == 0 && !resource[:auto_config]
-        raise ArgumentError, "Invalid PCI device name."
+      value do |val|
+        if val.strip.length == 0 && !resource[:auto_config]
+          raise ArgumentError, "Invalid PCI device name."
+        end
       end
     end
   end

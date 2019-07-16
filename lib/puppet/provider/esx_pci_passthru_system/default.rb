@@ -9,12 +9,14 @@ Puppet::Type.type(:esx_pci_passthru_system).provide(:esx_pci_passthru_system, :p
   def create
     Puppet.debug "Entered in create pci passthru config method."
     begin
-      pci_device_config = RbVmomi::VIM.HostPciPassthruConfig(:id => resource[:pci_device_id], :passthruEnabled => true)
-      pci_passthu_system.UpdatePassthruConfig(:config => [pci_device_config])
-
-      # sleep for 30 seconds to make sure that the configuration change is written
-      sleep 30
-
+      pci_device_ids = resource[:pci_device_id]
+      Puppet.debug("pci_device_ids: %s" % pci_device_ids)
+      for pci_device_id in pci_device_ids
+        pci_device_config = RbVmomi::VIM.HostPciPassthruConfig(:id => pci_device_id, :passthruEnabled => true)
+        pci_passthu_system.UpdatePassthruConfig(:config => [pci_device_config])
+        # sleep for 30 seconds to make sure that the configuration change is written
+        sleep 30
+      end
       if !active? && resource[:require_reboot]
         Puppet.debug "Reboot the host to activate the PCI passthrough"
         reboot
@@ -31,11 +33,14 @@ Puppet::Type.type(:esx_pci_passthru_system).provide(:esx_pci_passthru_system, :p
   def destroy
     Puppet.debug "Entered in destroy pci passthru config method."
     begin
-      pci_device_config = RbVmomi::VIM.HostPciPassthruConfig(:id => resource[:pci_device_id], :passthruEnabled => false)
-      pci_passthu_system.UpdatePassthruConfig(:config => [pci_device_config])
-
-      # sleep for 30 seconds to make sure that the configuration change is written
-      sleep 30
+      pci_device_ids = resource[:pci_device_id]
+      Puppet.debug("pci_device_ids: %s" % pci_device_ids)
+      for pci_device_id in pci_device_ids
+        pci_device_config = RbVmomi::VIM.HostPciPassthruConfig(:id => pci_device_id, :passthruEnabled => false)
+        pci_passthu_system.UpdatePassthruConfig(:config => [pci_device_config])
+        # sleep for 30 seconds to make sure that the configuration change is written
+        sleep 30
+      end
 
       if active? && resource[:require_reboot]
         Puppet.debug "Reboot the host to deactivate the PCI passthrough"
@@ -56,14 +61,22 @@ Puppet::Type.type(:esx_pci_passthru_system).provide(:esx_pci_passthru_system, :p
 
   def enabled?
     Puppet.debug "Check if the PCI passthrough setting is enabled on the target device"
-    device = pci_passthu_system.pciPassthruInfo.find { |pci| pci.id == resource[:pci_device_id] }
-    !device.nil? && device.passthruEnabled == true
+    pci_device_ids = resource[:pci_device_id]
+    for pci_device_id in pci_device_ids
+      device = pci_passthu_system.pciPassthruInfo.find { |pci| pci.id == pci_device_id }
+      return false if device.nil? || device.passthruEnabled == false
+    end
+    true
   end
 
   def active?
     Puppet.debug "Check if the PCI passthrough setting is active on the target device"
-    device = pci_passthu_system.pciPassthruInfo.find { |pci| pci.id == resource[:pci_device_id] }
-    !device.nil? && device.passthruActive == true
+    pci_device_ids = resource[:pci_device_id]
+    for pci_device_id in pci_device_ids
+      device = pci_passthu_system.pciPassthruInfo.find { |pci| pci.id == pci_device_id }
+      return false if device.nil? || device.passthruActive == false
+    end
+    true
   end
 
   ####################################################################################################################

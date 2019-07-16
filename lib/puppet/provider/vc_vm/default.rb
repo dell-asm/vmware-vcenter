@@ -232,10 +232,12 @@ Puppet::Type.type(:vc_vm).provide(:vc_vm, :parent => Puppet::Provider::Vcenter) 
   def configure_pci_passthru
     if available_pci_passthru_device
       Puppet.debug("Adding pci passthrough devices to: %s" % resource[:name])
-      spec = RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => [pci_passthru_device_spec], :memoryAllocation => {:reservation => resource[:memory_mb]})
-      task = vm.ReconfigVM_Task(:spec => spec)
-      task.wait_for_completion
-      raise("Failed vm configuration task for %s with error %s" % [vm.name, task.info[:error][:localizedMessage]]) if task.info[:state] == "error"
+      for pci_spec in pci_passthru_device_spec
+        spec = RbVmomi::VIM.VirtualMachineConfigSpec(:deviceChange => [pci_spec], :memoryAllocation => {:reservation => resource[:memory_mb]})
+        task = vm.ReconfigVM_Task(:spec => spec)
+        task.wait_for_completion
+        raise("Failed vm configuration task for %s with error %s" % [vm.name, task.info[:error][:localizedMessage]]) if task.info[:state] == "error"
+      end
     else
       Puppet.debug("Skipping PCI pass through configuration for vm: as no devices available." % resource[:name])
     end
@@ -786,13 +788,13 @@ Puppet::Type.type(:vc_vm).provide(:vc_vm, :parent => Puppet::Provider::Vcenter) 
 
   def available_pci_passthru_device
     # first check if host has pci passthrough device available
-    pci_passthru_dev = find_vm_host.config.pciPassthruInfo.find { |pci| pci.passthruActive == true }
+    pci_passthru_dev = find_vm_host.config.pciPassthruInfo.select { |pci| pci.passthruActive == true }
     if pci_passthru_dev
       # check that no other VM is using the passthrough device
       find_vm_host.vm.each do |other_vm|
-        if other_vm.config.hardware.device.grep(RbVmomi::VIM::VirtualPCIPassthrough).find { |other_vm_device| other_vm_device.backing.id == pci_passthru_dev.id }
-          return nil
-        end
+        used_device_id = other_vm.config.hardware.device.grep(RbVmomi::VIM::VirtualPCIPassthrough).map{ |other_vm_device| other_vm_device.backing.id }
+        #delete devices already being used in other VMs
+        pci_passthru_dev.delete_if { |pci| used_device_id.include?(pci.id) } if used_device_id
       end
       pci_passthru_dev
     else
@@ -801,30 +803,33 @@ Puppet::Type.type(:vc_vm).provide(:vc_vm, :parent => Puppet::Provider::Vcenter) 
   end
 
   def pci_passthru_device_spec
-    pci_passthru_device = available_pci_passthru_device
-    Puppet.debug("Found an active PCI passthrough device with id, #{pci_passthru_device.id}")
+    pci_passthru_devices = available_pci_passthru_device
+    return nil unless pci_passthru_devices
+    Puppet.debug("Found active PCI passthrough devices with ids %s" %[pci_passthru_devices.map{|pci| pci[:id]}])
+    pci_passthru_device_specs = []
+    for pci_passthru_device in pci_passthru_devices
+      pci_device = find_vm_host.hardware.pciDevice.find { |pci_dev| pci_dev.id ==  pci_passthru_device.id }
+      pci_id = pci_device.id
+      pci_device_id = pci_device.deviceId.to_s(16)
+      vendor_id = pci_device.vendorId
+      host_uuid = find_vm_host.esxcli.system.uuid.get
+      Puppet.debug("Configuring PCI passthrough on VM with device, %s : id= %s, device_id= %s, vendor_id= %s, host_uuid= %s" % [pci_device, pci_id, pci_device_id, vendor_id, host_uuid ])
+      backing = RbVmomi::VIM.VirtualPCIPassthroughDeviceBackingInfo(
+          :id => pci_id,
+          :deviceId => pci_device_id,
+          :vendorId => vendor_id,
+          :systemId => host_uuid,
+          :deviceName => ""
+      )
 
-    pci_device = find_vm_host.hardware.pciDevice.find { |pci_dev| pci_dev.id ==  pci_passthru_device.id }
-    pci_id = pci_device.id
-    pci_device_id = pci_device.deviceId.to_s(16)
-    vendor_id = pci_device.vendorId
-    host_uuid = find_vm_host.esxcli.system.uuid.get
+      pciDevice = RbVmomi::VIM.send(:VirtualPCIPassthrough, :backing => backing, :key => 0)
 
-    Puppet.debug("Configuring PCI passthrough on VM with device, #{pci_device}: id=#{pci_id}, device_id=#{pci_device_id}, vendor_id=#{vendor_id}, host_uuid=#{host_uuid}")
-    backing = RbVmomi::VIM.VirtualPCIPassthroughDeviceBackingInfo(
-        :id => pci_id,
-        :deviceId => pci_device_id,
-        :vendorId => vendor_id,
-        :systemId => host_uuid,
-        :deviceName => ""
-    )
-
-    pciDevice = RbVmomi::VIM.send(:VirtualPCIPassthrough, :backing => backing, :key => 0)
-
-    RbVmomi::VIM.VirtualDeviceConfigSpec(
-        :device => pciDevice,
-        :operation => RbVmomi::VIM.VirtualDeviceConfigSpecOperation('add')
-    )
+      pci_passthru_device_specs << RbVmomi::VIM.VirtualDeviceConfigSpec(
+          :device => pciDevice,
+          :operation => RbVmomi::VIM.VirtualDeviceConfigSpecOperation('add')
+      )
+    end
+    pci_passthru_device_specs
   end
 
   def profile(profile_name)

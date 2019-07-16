@@ -17,6 +17,7 @@ describe "vm create and clone behavior testing" do
   let(:ovfManager) {mock("ovf_manager")}
   let(:vm) {mock("vm")}
   let(:pci_dev) {mock("pci_device")}
+  let(:pci_dev1) {mock("pci_device1")}
   let(:hardware) {mock("hardware")}
   let(:device) {mock("device")}
   let(:config) {mock("config")}
@@ -29,6 +30,8 @@ describe "vm create and clone behavior testing" do
   let(:net1) {mock("network1")}
   let(:net2) {mock("network2")}
   let(:net3) {mock("network3")}
+  let(:pci_spec) {mock("device1")}
+  let(:pci_spec1) {mock("device2")}
   
   context "when vc_vm provider is created " do
     it "should have a create method defined for vc_vm" do
@@ -163,16 +166,17 @@ describe "vm create and clone behavior testing" do
       host.expects(:config).returns(config)
       host.stubs(:vm).returns([vm])
       pci_dev.stubs(:passthruActive).returns(true)
+      pci_dev.stubs(:id).returns(1)
       hardware.expects(:device).returns(["RbVmomi::VIM::VirtualPCIPassthrough"])
       config.expects(:pciPassthruInfo).returns([pci_dev])
       config.expects(:hardware).returns(hardware)
       vm.expects(:config).returns(config)
-      expect(provider.available_pci_passthru_device).to eq(pci_dev)
+      expect(provider.available_pci_passthru_device[0]).to eq(pci_dev)
     end
  
     it "should configure passthrough device" do
-      provider.expects(:available_pci_passthru_device).returns(pci_dev)	
-      provider.expects(:pci_passthru_device_spec).returns({})
+      provider.expects(:available_pci_passthru_device).returns(pci_dev,pci_dev1)
+      provider.expects(:pci_passthru_device_spec).returns([pci_spec])
       task.stubs(:wait_for_completion)
       task.stubs(:info).returns({:state => "success"})
       vm.expects(:ReconfigVM_Task).returns(task)
