@@ -253,16 +253,12 @@ Puppet::Type.type(:vc_vm).provide(:vc_vm, :parent => Puppet::Provider::Vcenter) 
     find_vm_host.datastore.select { |ds| ds.summary.type == "PMEM"  }
   end
 
-  def host_nvdimm_datastore_names
-    host_nvdimm_datastores.map { |host_nvdimm_ds| host_nvdimm_ds.info.name }
-  end
-
   def vm_datastores
     vm.datastore
   end
 
   def vm_nvdimm_datastore
-    vm_datastores.find { |vm_ds| host_nvdimm_datastore_names.include? vm_ds.summary.name  }
+    vm_datastores.find { |vm_ds| vm_ds.summary.type == "PMEM" }
   end
 
   def disable_nvdimm_ds_alarm
@@ -349,6 +345,7 @@ Puppet::Type.type(:vc_vm).provide(:vc_vm, :parent => Puppet::Provider::Vcenter) 
     end
 
     if resource[:disable_nvdimm_alarm]
+      sleep(30)
       disable_nvdimm_ds_alarm
     end
   end

@@ -65,21 +65,6 @@ describe "vm create and clone behavior testing" do
       expect(provider.host_nvdimm_datastores).to eq([datastore2])
     end
 
-    it "should return host nvdimm datastore names" do
-      host = mock("host")
-      datastore1 = mock("datastore1")
-      datastore2 = mock("datastore2")
-      info1 = mock("info1")
-      info2 = mock("info2")
-      info1.expects(:name).returns("Other")
-      info2.expects(:name).returns("PMemDS-14ed2a15-2e15-7f4a-bbfd-c0b1058a03d2")
-      datastore1.expects(:info).returns(info1)
-      datastore2.expects(:info).returns(info2)
-      datastores = [datastore1, datastore2]
-      provider.expects(:host_nvdimm_datastores).returns(datastores)
-      expect(provider.host_nvdimm_datastore_names).to eq(["Other", "PMemDS-14ed2a15-2e15-7f4a-bbfd-c0b1058a03d2"])
-    end
-
     it "should return vm datastores" do
       this_vm = mock("vm")
       datastore1 = mock("datastore1")
@@ -95,12 +80,11 @@ describe "vm create and clone behavior testing" do
       datastore2 = mock("datastore2")
       summary1 = mock("summary1")
       summary2 = mock("summary2")
-      summary1.expects(:name).returns("Other")
-      summary2.expects(:name).returns("PMemDS-14ed2a15-2e15-7f4a-bbfd-c0b1058a03d2")
+      summary1.expects(:type).returns("Other").at_least_once
+      summary2.expects(:type).returns("PMEM").at_least_once
       datastore1.expects(:summary).returns(summary1)
       datastore2.expects(:summary).returns(summary2)
       datastores = [datastore1, datastore2]
-      provider.expects(:host_nvdimm_datastore_names).returns(["PMemDS-14ed2a15-2e15-7f4a-bbfd-c0b1058a03d2"]).at_least_once
       provider.expects(:vm_datastores).returns(datastores)
       expect(provider.vm_nvdimm_datastore).to eq(datastore2)
     end
@@ -163,6 +147,7 @@ describe "vm create and clone behavior testing" do
       RbVmomi::VIM.expects(:VirtualMachineConfigSpec)
       provider.expects(:nvdimm_device_spec)
       provider.expects(:nvdimm_controller_spec)
+      provider.expects(:sleep)
       provider.expects(:power_state).returns("poweredOff").at_least_once
       nvdimm_vm = mock("vm")
       task = mock("task")
