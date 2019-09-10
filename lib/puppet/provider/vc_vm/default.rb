@@ -224,6 +224,16 @@ Puppet::Type.type(:vc_vm).provide(:vc_vm, :parent => Puppet::Provider::Vcenter) 
       raise(Puppet::Error, "Unable to create VM: '#{resource[:name]}'") unless vm
     end
 
+    if resource[:rdm_disk_details] && resource[:rdm_disk_details].any?
+      case  resource[:rdm_disk_operation]
+        when "remove"
+            remove_rdm_disks
+        when "add"
+            add_rdm_disks
+        else
+      end
+    end
+
     # PCI passthrough can be enabled after VM is created because vm_host is required for this process
     configure_pci_passthru
 
@@ -1278,14 +1288,6 @@ Puppet::Type.type(:vc_vm).provide(:vc_vm, :parent => Puppet::Provider::Vcenter) 
     task = vm.ReconfigVM_Task(:spec => config_spec)
     task.wait_for_completion
 
-    if resource[:disk_map_type] == "rdm"
-      rdm_device_change_spec = rdm_disk_specs
-      config_spec = RbVmomi::VIM.VirtualMachineConfigSpec(
-          :deviceChange => rdm_device_change_spec)
-      task = vm.ReconfigVM_Task(:spec => config_spec)
-      task.wait_for_completion
-    end
-
     raise("Failed vm configuration task for %s with error %s" % [vm.name, task.info[:error][:localizedMessage]]) if task.info[:state] == "error"
   end
 
@@ -1573,9 +1575,49 @@ Puppet::Type.type(:vc_vm).provide(:vc_vm, :parent => Puppet::Provider::Vcenter) 
     RbVmomi::VIM.VirtualDiskRawDiskMappingVer1BackingInfo(
         :diskMode => "persistent",
         :fileName => "",
-        :compatibilityMode => "virtualMode",
+        :compatibilityMode => "physicalMode",
         :deviceName => device_name,
         )
   end
 
-end
+  def remove_rdm_disks
+    Puppet.debug("Removing RDM disks from #{vm.name}")
+    rdm_disk_details = JSON.parse resource[:rdm_disk_details]
+    disk_ids_to_remove = rdm_disk_details.collect do |_, disk_facts|
+      disk_facts["OtherUIDs"]
+    end
+    rdm_disks = vm.config.hardware.device.find_all do |device|
+      device if device.class < RbVmomi::VIM::VirtualDisk && device.backing.is_a?(RbVmomi::VIM::VirtualDiskRawDiskMappingVer1BackingInfo) &&
+          disk_ids_to_remove.include?(device.deviceName)
+    end
+
+    rdm_disk_remove_specs = rdm_disks.collect do |rdm_disk|
+      RbVmomi::VIM.VirtualDeviceConfigSpec(
+          :device => rdm_disk,
+          :operation => RbVmomi::VIM.VirtualDeviceConfigSpecOperation('remove')
+      )
+    end
+    rdm_disk_config_spec = RbVmomi::VIM.VirtualMachineConfigSpec(
+        :name => resource[:name],
+        :memoryMB => resource[:memory_mb],
+        :numCPUs => resource[:num_cpus],
+        :numCoresPerSocket => resource[:num_cpus],
+        :deviceChange => rdm_disk_remove_specs
+    )
+    task = vm.ReconfigVM_Task(:spec => rdm_disk_config_spec)
+    task.wait_for_completion
+    raise("Failed to remove RDM disks from %s with error %s" % [vm.name, task.info[:error][:localizedMessage]]) if task.info[:state] == "error"
+  end
+
+  def add_rdm_disks
+    Puppet.debug("Adding RDM disks to #{vm.name}")
+    rdm_device_change_spec = rdm_disk_specs
+    config_spec = RbVmomi::VIM.VirtualMachineConfigSpec(
+        :deviceChange => rdm_device_change_spec)
+    task = vm.ReconfigVM_Task(:spec => config_spec)
+    task.wait_for_completion
+    raise("Failed to add RDM disks to %s with error %s" % [vm.name, task.info[:error][:localizedMessage]]) if task.info[:state] == "error"
+  end
+
+  end
+

@@ -312,4 +312,9 @@ Puppet::Type.newtype(:vc_vm) do
   newparam(:rdm_disk_details) do
     desc 'Set the RDM Disk details.This will be a hash containing disk serial numbers as key ,and value as a hash containing disk path and disk size'
   end
+
+  newparam(:rdm_disk_operation) do
+    desc 'Set the RDM Disk Operation (add/remove) depending on whether RDM disks need to be added or removed from VM)'
+  end
+
 end
