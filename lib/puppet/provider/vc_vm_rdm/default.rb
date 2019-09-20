@@ -8,7 +8,7 @@ Puppet::Type.type(:vc_vm_rdm).provide(:vc_vm_rdm, :parent => Puppet::Provider::V
   @doc = 'Processes RDM disks'
 
   def vm
-    @vm ||= findvm_by_name(datacenter.vmFolder, resource[:name])
+    @vm ||= findvm_by_name(datacenter.vmFolder.find(resource[:cluster]), resource[:name])
   end
 
   def datacenter(name=resource[:datacenter])
