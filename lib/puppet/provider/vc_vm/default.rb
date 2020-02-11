@@ -1318,6 +1318,7 @@ Puppet::Type.type(:vc_vm).provide(:vc_vm, :parent => Puppet::Provider::Vcenter) 
   def deploy_ovf
     vm_name = resource[:name]
     ovf_url = resource[:ovf_url]
+    resource[:vm_folder_path] = resource[:cluster]
     dc = vim.serviceInstance.find_datacenter(resource[:datacenter])
     datastore = dc.find_datastore(resource[:datastore])
     cluster = dc.find_compute_resource(resource[:cluster])
@@ -1327,11 +1328,8 @@ Puppet::Type.type(:vc_vm).provide(:vc_vm, :parent => Puppet::Provider::Vcenter) 
 
     # Use root vm folder for deployment if no folder passed in as input
     root_vm_folder = dc.vmFolder
-    vm_folder = root_vm_folder
-    if resource[:vm_folder_path]
-      vm_folder = root_vm_folder.traverse(resource[:vm_folder_path], VIM::Folder)
-      raise("Could not find VM folder: %s" % resource[:vm_folder_path])
-    end
+    vm_folder ||= root_vm_folder.traverse(resource[:vm_folder_path], VIM::Folder, true) if resource[:vm_folder_path]
+    raise("Could not find VM folder: %s" % resource[:vm_folder_path]) unless vm_folder
     Puppet.debug("Using vm folder: %s" % vm_folder.name)
 
     # Find host associated with the target datastore for this VM
@@ -1462,7 +1460,7 @@ Puppet::Type.type(:vc_vm).provide(:vc_vm, :parent => Puppet::Provider::Vcenter) 
   end
 
   def vm
-    @vm ||= findvm_by_name(datacenter.vmFolder, resource[:name])
+    @vm ||= findvm_by_name(datacenter.vmFolder.find(resource[:cluster]), resource[:name])
   end
 
   def dvswitch(dv_switch_name)

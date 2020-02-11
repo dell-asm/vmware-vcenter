@@ -101,7 +101,7 @@ Puppet::Type.type(:vc_vm_pci_passthru).provide(:vc_vm_pci_passthru, :parent => P
   end
 
   def vm
-    @__vm ||= findvm_by_name(datacenter.vmFolder, resource[:name])
+    @__vm ||= findvm_by_name(datacenter.vmFolder.find(resource[:cluster]), resource[:name])
   end
 
   # finds host to add nfs_datastore and returns the host object
