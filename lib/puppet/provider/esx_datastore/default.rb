@@ -44,6 +44,16 @@ Puppet::Type.type(:esx_datastore).provide(:esx_datastore, :parent => Puppet::Pro
     end
   end
 
+  def datastore_size
+    @datastore.summary.size
+  end
+
+  def datastore_size=(value)
+    datastoreExpandOption = host.configManager.datastoreSystem.QueryVmfsDatastoreExpandOptions(:datastore => @datastore)
+    expandSpec = datastoreExpandOption[0].spec
+    host.configManager.datastoreSystem.ExpandVmfsDatastore(:datastore => @datastore, :spec => expandSpec)
+  end
+
   def find_disk
 
     target_iqn = resource[:target_iqn]
